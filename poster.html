@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포스터</title>
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; }
+  body { word-break: keep-all; margin: 0; background: #888; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; color: #1d2b27; }
+  .bar { position: sticky; top: 0; background: #222; color: #fff; padding: 10px 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; z-index: 5; font-size: 14px; }
+  .bar a, .bar button { background: #444; color: #fff; border: 0; border-radius: 8px; padding: 8px 12px; text-decoration: none; cursor: pointer; font-size: 14px; }
+  .bar a.on { background: #2e7d6b; }
+  .page { width: 210mm; height: 297mm; margin: 16px auto; background: #fff; padding: 14mm 14mm 18mm; display: flex; flex-direction: column; overflow: hidden; }
+  .head { text-align: center; }
+  .head .kicker { display: inline-block; background: #1f8a70; color: #fff; padding: 4px 14px; border-radius: 99px; font-size: 15px; font-weight: 700; }
+  .head h1 { font-size: 46px; margin: 12px 0 6px; letter-spacing: -1px; line-height: 1.15; }
+  .head h1 em { font-style: normal; color: #c0392b; }
+  .head p { font-size: 18px; margin: 0; color: #4a5a55; }
+  .facts { display: flex; gap: 10px; margin: 12mm 0 8mm; }
+  .facts div { flex: 1; background: #f3f7f5; border-radius: 14px; padding: 12px; font-size: 16px; text-align: center; line-height: 1.45; }
+  .facts b { display: block; font-size: 26px; margin-bottom: 4px; }
+  .cta { text-align: center; font-size: 24px; font-weight: 800; margin-bottom: 6mm; }
+  .cta span { color: var(--accent); }
+  .boxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; flex: 1; }
+  .box { border: 3px solid var(--c); border-radius: 18px; padding: 10px 8px 14px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .box .ic { width: 64px; height: 64px; } .box .ic svg { width: 100%; height: 100%; }
+  .facts .ico { color: #e5484d; margin-bottom: 4px; }
+  .box h2 { margin: 2px 0 8px; font-size: 17px; color: var(--c); }
+  .target { width: 48mm; height: 48mm; display: flex; align-items: center; justify-content: center; }
+  .target svg { width: 100%; height: 100%; }
+  .nfc { width: 46mm; height: 46mm; border-radius: 50%; border: 3px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--accent); font-weight: 800; font-size: 15px; background: #eef5fd; }
+  .nfc .w { font-size: 34px; line-height: 1; margin-bottom: 4px; }
+  .box .hint { margin-top: 10px; font-size: 14px; color: #4a5a55; }
+  .flow { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 7mm; font-size: 15px; font-weight: 700; color: #136650; }
+  .flow span { background: #e6f4ef; border-radius: 99px; padding: 6px 14px; }
+  .flow i { font-style: normal; color: #9ab; }
+  .how { margin-top: 5mm; background: #f3f7f5; border-radius: 14px; padding: 12px 16px; font-size: 15px; line-height: 1.6; }
+  .band { margin-top: 5mm; background: #1f8a70; color: #fff; border-radius: 14px; text-align: center; padding: 10px; font-size: 19px; font-weight: 800; }
+  .foot { margin-top: 3mm; display: flex; justify-content: space-between; font-size: 12px; color: #7a8a85; }
+  @media print { body { background: #fff; } .bar { display: none; } .page { margin: 0; box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>포스터</b>
+  <a id="vqr" href="?v=qr">QR 버전</a>
+  <a id="vnfc" href="?v=nfc">NFC 버전</a>
+  <button onclick="print()">🖨 인쇄 / PDF 저장</button>
+  <span style="opacity:.75">두 버전은 안내 방식 표시만 다르고 나머지는 같아요 (같은 조건 비교용)</span>
+</div>
+
+<div class="page" id="page"></div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="icons.js"></script>
+<script src="qrcode.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const P = new URLSearchParams(location.search);
+  const v = P.get("v") === "nfc" ? "nfc" : "qr";
+  const base = P.get("base") || sessionStorage.getItem("nfcmed_base") || App.baseUrl();
+  const accent = v === "qr" ? "#d9730d" : "#2b7bd6";
+  document.getElementById(v === "qr" ? "vqr" : "vnfc").classList.add("on");
+  document.title = (v === "qr" ? "QR" : "NFC") + " 포스터 - 폐의약품";
+  const page = document.getElementById("page");
+  page.style.setProperty("--accent", accent);
+
+  const boxes = Object.keys(CONTENT).map(k => {
+    const c = CONTENT[k];
+    const url = base + "?t=" + k + "&s=qr";
+    const target = v === "qr"
+      ? '<div class="target">' + App.qrSvg(url) + "</div>"
+      : '<div class="nfc"><div class="w">📱</div>여기에<br>폰을 대세요</div>';
+    return '<div class="box" style="--c:' + c.color + '"><div class="ic">' + ILLU[c.disposal] + "</div><h2>" + c.name + "</h2>" + target +
+      '<div class="hint">' + c.summary + "</div></div>";
+  }).join("");
+
+  const how = v === "qr"
+    ? "<b>📷 QR 이용 방법</b><br>휴대폰 <b>카메라 앱</b>을 켜고 버릴 약 종류의 QR코드를 비추세요. 화면에 뜨는 주소를 누르면 안내가 열려요."
+    : "<b>📱 NFC 이용 방법</b><br><b>아이폰</b>: 화면을 켜고 폰 <b>윗부분</b>을 원에 대세요. &nbsp; <b>안드로이드</b>: NFC를 켜고 폰 <b>뒷면 가운데</b>를 원에 대세요.<br>뜨는 알림을 누르면 안내가 열려요. (앱 설치 필요 없음)";
+
+  page.innerHTML =
+    '<div class="head"><span class="kicker">폐의약품 바로 버리기 캠페인</span>' +
+    "<h1>남은 약, <em>변기·쓰레기통</em>에<br>버리지 마세요!</h1>" +
+    "<p>약 성분은 하수처리장에서도 다 걸러지지 않아 강과 바다로 흘러가요.</p></div>" +
+    '<div class="facts"><div>' + I("x", 30, 2.4) + '<br>변기·싱크대에<br>버리면 수질 오염</div><div>' + I("alert", 30, 2) + '<br>물고기 호르몬·<br>생태계에 영향</div><div>' + I("shield", 30, 2) + '<br>항생제 내성균<br>증가 우려</div></div>' +
+    '<div class="cta">약을 골라 <span>' + (v === "qr" ? "QR을 찍어" : "폰을 대어") + "</span> 약 정보와 버리는 법을 확인하세요!</div>" +
+    '<div class="boxes">' + boxes + "</div>" +
+    '<div class="flow"><span>① 약품 정보</span><i>▶</i><span>② 버리는 방법 + OX 퀴즈</span><i>▶</i><span>③ 1분 설문</span></div>' +
+    '<div class="how">' + how + "<br>확인 후 <b>1분 설문</b>에도 참여해 주세요 🙏</div>" +
+    '<div class="band">남은 약은 주민센터 · 보건소 · 참여 약국 수거함으로!</div>' +
+    '<div class="foot"><span>벗, 돋움 프로젝트</span><span>참여 지역에선 알약·가루약을 우체통에 넣어도 OK (봉투에 &#39;폐의약품&#39; 표시)</span></div>';
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>태그 등록 · 관리자</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .tagrow { border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 12px; display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
+  .tagrow img { width: 120px; height: 120px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 8px; }
+  .tagrow .lbl { font-size: 12px; color: var(--sub); margin-top: 8px; }
+  @media (max-width: 520px) { .tagrow { grid-template-columns: 1fr; } }
+</style>
+<link rel="stylesheet" href="glass.css">
+</head>
+<body>
+<header class="top wide-head">
+  <div class="small" id="badges"></div>
+  <h1>태그 등록 · 관리</h1>
+  <p>태그를 등록하고, NFC에 쓸 주소와 QR을 만들어요.</p>
+</header>
+<div class="wrap wide">
+
+  <div class="card lift" id="lock">
+    <h2>관리자 비밀번호</h2>
+    <div class="row"><input type="password" id="pin" placeholder="비밀번호" style="max-width:220px"><button class="btn" id="unlock">들어가기</button></div>
+    <p class="muted">비밀번호는 config.js 의 ADMIN_PIN 에서 정해요.</p>
+  </div>
+
+  <div id="panel" class="lift" style="display:none">
+    <div class="card">
+      <h2>① 연결 상태</h2>
+      <div id="status" class="muted">확인 중…</div>
+      <h3>사이트 주소 (NFC/QR 에 들어갈 주소 앞부분)</h3>
+      <div class="row"><input type="text" id="base"><button class="btn sm ghost" id="saveBase">적용</button></div>
+      <p class="muted">GitHub Pages 등에 올린 뒤 그 주소로 접속하면 자동으로 맞춰져요. 다른 주소로 만들려면 여기서 바꾸세요 (이 화면에서만 적용).</p>
+    </div>
+
+    <div class="card">
+      <h2>② 새 태그 등록</h2>
+      <div class="grid2">
+        <div><div class="lbl muted">태그 ID (영문·숫자, 짧게)</div><input type="text" id="nid" placeholder="예: box1"></div>
+        <div><div class="lbl muted">태그 이름 (어디에 붙이나요?)</div><input type="text" id="nname" placeholder="예: 3층 보건실 앞 수거함"></div>
+        <div><div class="lbl muted">보여줄 약품</div><select id="ntype"></select></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn" id="add">등록하기</button></div>
+      <p class="muted">기본 태그 3개 (tylenol / pancol / fucidin) 는 등록하지 않아도 바로 작동해요. 같은 내용을 여러 장소에 붙이려면 새 태그를 등록하세요.</p>
+    </div>
+
+    <div class="card">
+      <h2>③ 태그 목록 · NFC 주소 · QR</h2>
+      <p class="muted" style="margin-top:-4px">
+        <b style="color:var(--nfc)">NFC용 주소</b>는 NFC 스티커에 쓰고, <b style="color:var(--qr)">QR</b>은 QR 포스터에 넣어요. 둘 다 같은 페이지로 가지만 접속 경로가 따로 기록돼요.
+      </p>
+      <div id="list"></div>
+    </div>
+
+    <div class="card">
+      <h2>④ NFC 스티커에 쓰는 방법</h2>
+      <ol class="steps">
+        <li>폰에 <b>NFC Tools</b> 앱(무료, 아이폰·안드로이드)을 설치해요.</li>
+        <li>앱에서 <b>쓰기</b> → <b>레코드 추가</b> → <b>URL / URI</b> 를 고르세요.</li>
+        <li>위 목록의 <b>NFC용 주소</b>를 복사해서 붙여넣어요. (https:// 부분까지 모두)</li>
+        <li><b>쓰기</b>를 누르고 NFC 스티커에 폰을 대면 끝이에요.</li>
+        <li>스티커에 폰을 대서 안내 페이지가 열리는지 확인해요. 열리면 "NFC로 접속" 표시가 보여요.</li>
+      </ol>
+      <p class="muted">※ '잠금(쓰기 금지)'은 하지 마세요. 나중에 주소를 바꿀 수 없어요. 스티커는 NTAG213 이상이면 충분해요.<br>
+      ※ 아이폰은 화면이 켜진 상태에서 폰 윗부분을, 안드로이드는 NFC를 켜고 폰 뒷면 가운데를 대요.</p>
+      <h3>인식이 안 될 때</h3>
+      <ul class="info">
+        <li><b>아이폰</b>: 알림 배너가 뜨면 눌러야 열려요. 카메라·지갑(Apple Pay) 화면이 켜져 있거나 비행기 모드면 읽지 않아요. iPhone 7~X는 제어 센터의 'NFC 태그 리더기'를 눌러야 해요.</li>
+        <li><b>안드로이드</b>: 설정 → 연결 → NFC가 켜져 있는지, 화면 잠금이 풀려 있는지 확인해요.</li>
+        <li><b>공통</b>: 두꺼운 케이스·카드지갑·금속 판 위 스티커는 잘 안 읽혀요. 1~2초 가만히 대고, 인터넷(데이터/와이파이)이 필요해요.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>⑤ 포스터 · 통계</h2>
+      <div class="row">
+        <a class="btn ghost" href="poster.html?v=qr" target="_blank">QR 포스터 만들기</a>
+        <a class="btn ghost" href="poster.html?v=nfc" target="_blank">NFC 포스터 만들기</a>
+        <a class="btn ghost" href="stats.html" target="_blank">통계 보기</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="qrcode.js"></script>
+<script src="app.js"></script>
+<script src="glass.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), esc = App.esc;
+  const PIN_OK = "nfcmed_admin";
+  let BASE = sessionStorage.getItem("nfcmed_base") || App.baseUrl();
+  const urlFor = (id, s) => BASE + "?t=" + encodeURIComponent(id) + "&s=" + s;
+
+  $("badges").innerHTML = App.DEMO ? '<span class="badge demo">데모 모드</span>' : '<span class="badge">기록 서버 연결됨</span>';
+  $("ntype").innerHTML = Object.keys(CONTENT).map(k => '<option value="' + k + '">' + CONTENT[k].icon + " " + CONTENT[k].name + "</option>").join("");
+
+  function unlock() {
+    if ($("pin").value !== String(App.CFG.ADMIN_PIN) && !sessionStorage.getItem(PIN_OK)) { toast("비밀번호가 달라요"); return; }
+    sessionStorage.setItem(PIN_OK, "1");
+    $("lock").style.display = "none"; $("panel").style.display = "";
+    init();
+  }
+  $("unlock").onclick = unlock;
+  $("pin").onkeydown = e => { if (e.key === "Enter") unlock(); };
+  if (sessionStorage.getItem(PIN_OK)) unlock();
+
+  async function init() {
+    $("base").value = BASE;
+    if (App.DEMO) {
+      $("status").innerHTML = '🟡 <b>데모 모드</b>: 기록 서버(API_URL)가 비어 있어 이 브라우저에만 저장돼요. 실제 실험 전에 설치 가이드 3단계대로 config.js 에 Apps Script 주소를 넣어 주세요.';
+    } else {
+      try { const r = await fetch(App.CFG.API_URL + "?action=ping"); const j = await r.json(); $("status").innerHTML = j.ok ? "🟢 <b>기록 서버 연결 정상</b>" : "🔴 서버 응답 이상"; }
+      catch (e) { $("status").innerHTML = "🔴 <b>기록 서버에 연결할 수 없어요.</b> API_URL 과 배포 설정(액세스: 모든 사용자)을 확인하세요."; }
+    }
+    if (/localhost|127\.0\.0\.1|preview|sandbox/i.test(BASE)) {
+      $("status").innerHTML += '<div class="notice">지금 주소는 임시 주소예요. 실제 NFC에는 GitHub Pages 처럼 계속 열리는 주소를 써야 해요.</div>';
+    }
+    render();
+  }
+
+  $("saveBase").onclick = () => {
+    let v = $("base").value.trim(); if (!v) return;
+    if (!/\/$/.test(v)) v += "/";
+    BASE = v; sessionStorage.setItem("nfcmed_base", v); render(); toast("주소를 적용했어요");
+  };
+
+  async function render() {
+    $("list").innerHTML = '<p class="muted">불러오는 중…</p>';
+    let custom = [];
+    try { custom = await App.getTags(); } catch (e) { toast("등록 목록을 못 불러왔어요"); }
+    const builtin = Object.keys(CONTENT).map(k => ({ id: k, name: "기본 태그 · " + CONTENT[k].name, type: k, builtin: true }));
+    const all = builtin.concat(custom.filter(t => !CONTENT[t.id]));
+    $("list").innerHTML = all.map(t => {
+      const c = CONTENT[t.type] || { icon: "❓", name: t.type };
+      const nfc = urlFor(t.id, "nfc"), qr = urlFor(t.id, "qr");
+      return '<div class="tagrow"><div>' +
+        '<b style="font-size:16px">' + c.icon + " " + esc(t.name) + '</b> <span class="muted">(ID: ' + esc(t.id) + " · 내용: " + esc(c.name) + ")</span>" +
+        '<div class="lbl" style="color:var(--nfc)">NFC용 주소 (스티커에 쓰기)</div><code class="url">' + esc(nfc) + "</code> " +
+        '<div class="row" style="margin-top:6px"><button class="btn sm" data-copy="' + esc(nfc) + '">NFC 주소 복사</button>' +
+        '<a class="btn sm ghost" href="' + esc(urlFor(t.id, "test")) + '" target="_blank">미리보기(기록 안 됨)</a>' +
+        (t.builtin ? "" : '<button class="btn sm red" data-del="' + esc(t.id) + '">삭제</button>') + "</div>" +
+        '<div class="lbl" style="color:var(--qr)">QR용 주소</div><code class="url">' + esc(qr) + "</code>" +
+        '</div><div class="center"><img alt="QR" src="' + App.qrDataUrl(qr, 5) + '"><br><a class="btn sm ghost" style="margin-top:6px" download="QR_' + esc(t.id) + '.gif" href="' + App.qrDataUrl(qr, 12) + '">QR 저장</a></div></div>';
+    }).join("");
+  }
+
+  $("list").addEventListener("click", async e => {
+    const cp = e.target.closest("[data-copy]"), del = e.target.closest("[data-del]");
+    if (cp) {
+      const v = cp.dataset.copy;
+      try { await navigator.clipboard.writeText(v); } catch (err) { const ta = document.createElement("textarea"); ta.value = v; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+      toast("복사했어요! NFC Tools 에 붙여넣으세요");
+    }
+    if (del && confirm("'" + del.dataset.del + "' 태그를 삭제할까요?")) {
+      const r = await App.post({ action: "delTag", id: del.dataset.del, pin: String(App.CFG.ADMIN_PIN) });
+      if (r.ok) { toast("삭제했어요"); render(); } else toast(r.error || "삭제 실패");
+    }
+  });
+
+  $("add").onclick = async () => {
+    const id = $("nid").value.trim(), name = $("nname").value.trim(), type = $("ntype").value;
+    if (!/^[A-Za-z0-9_-]{1,20}$/.test(id)) { toast("태그 ID는 영문·숫자 20자 이내로 적어 주세요"); return; }
+    if (CONTENT[id]) { toast("기본 태그와 같은 ID는 쓸 수 없어요"); return; }
+    if (!name) { toast("태그 이름을 적어 주세요"); return; }
+    $("add").disabled = true;
+    try {
+      const r = await App.post({ action: "addTag", id, name, type, pin: String(App.CFG.ADMIN_PIN) });
+      if (r.ok) { toast("등록했어요! 아래 목록에서 NFC 주소를 복사하세요"); $("nid").value = ""; $("nname").value = ""; render(); }
+      else toast(r.error || "등록 실패");
+    } catch (e) { toast("서버 연결 실패"); }
+    $("add").disabled = false;
+  };
+
+  function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 2200); }
+})();
+</script>
+</body>
+</html>

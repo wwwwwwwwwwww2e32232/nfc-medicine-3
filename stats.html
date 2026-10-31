@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>접속 통계 · QR vs NFC</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .kpi { position: relative; border-radius: 24px; padding: 18px; color: #fff; overflow: hidden; box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 16px 34px -18px rgba(20,30,50,.5); }
+  .kpi::after { content: ""; position: absolute; right: -30px; top: -30px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.14); }
+  .kpi.qr { background: linear-gradient(150deg, #ffad5c, #e8760f); } .kpi.nfc { background: linear-gradient(150deg, #7c97ff, #3352c9); }
+  .kpi .t { font-size: 14px; opacity: .9; }
+  .kpi .n { font-size: 34px; font-weight: 800; line-height: 1.1; margin: 4px 0; }
+  .kpi .d { font-size: 13px; opacity: .95; }
+  .vs { height: 34px; display: flex; border-radius: 10px; overflow: hidden; font-weight: 700; color: #fff; font-size: 14px; }
+  .vs div { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; }
+  .vs div:empty, .vs div[style*="width:0%"] { display: none; }
+  .bar { height: 22px; border-radius: 6px; display: inline-block; vertical-align: middle; }
+  .qrow { display: grid; grid-template-columns: 170px 1fr 70px; gap: 8px; align-items: center; margin: 4px 0; font-size: 14px; }
+  .qrow .track { background: #eef3f1; border-radius: 6px; height: 22px; }
+  .seg { display: inline-flex; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; background: #fff; padding: 7px 14px; font-size: 14px; cursor: pointer; }
+  .seg button.on { background: var(--main); color: #fff; }
+  .summary { background: rgba(255,255,255,.6); border: 1px solid #fff; border-radius: 18px; padding: 14px 16px; font-size: 15px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; margin-right: 12px; font-size: 13px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  @media (max-width: 520px) { .qrow { grid-template-columns: 110px 1fr 56px; font-size: 13px; } }
+  @media print { .noprint { display: none !important; } body { background: #fff; } .card { box-shadow: none; border: 1px solid #ddd; } }
+</style>
+<link rel="stylesheet" href="glass.css">
+</head>
+<body>
+<header class="top wide-head">
+  <div class="small" id="badges"></div>
+  <h1>QR vs NFC 접속 통계</h1>
+  <p>같은 위치, 같은 기간(5일)씩 붙인 포스터의 접속 기록 비교</p>
+</header>
+<div class="wrap wide">
+
+  <div class="card noprint lift">
+    <div class="grid2">
+      <div><div class="muted">시작 날짜</div><input type="date" id="from"></div>
+      <div><div class="muted">끝 날짜</div><input type="date" id="to"></div>
+      <div><div class="muted">태그</div><select id="tagSel"><option value="">전체 태그</option></select></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn sm" id="reload">새로고침</button>
+      <button class="btn sm ghost" id="csvV">접속 기록 CSV</button>
+      <button class="btn sm ghost" id="csvS">설문 결과 CSV</button>
+      <button class="btn sm ghost" onclick="print()">인쇄 / PDF 저장</button>
+      <span id="demoBtns" style="display:none">
+        <button class="btn sm ghost" id="fill">예시 데이터 채우기</button>
+        <button class="btn sm red" id="clear">데모 기록 지우기</button>
+      </span>
+    </div>
+    <p class="muted" id="note"></p>
+  </div>
+
+  <div class="card">
+    <h2>한눈에 비교</h2>
+    <div class="grid2" id="kpis"></div>
+    <h3>고유 방문자 비율</h3>
+    <div class="vs" id="vs"></div>
+    <div class="summary" style="margin-top:14px" id="summary"></div>
+  </div>
+
+  <div class="card">
+    <h2>날짜별 접속 (고유 방문자)</h2>
+    <div class="legend"><span><i style="background:var(--qr)"></i>QR</span><span><i style="background:var(--nfc)"></i>NFC</span><span><i style="background:#9aa9a4"></i>직접 접속</span></div>
+    <div id="daily" style="overflow-x:auto"></div>
+  </div>
+
+  <div class="card">
+    <h2>태그별 · 기기별</h2>
+    <div class="grid2">
+      <div><table id="byTag"></table></div>
+      <div><table id="byDev"></table></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">설문 결과</h2>
+      <div class="seg noprint" id="seg"><button data-s="" class="on">전체</button><button data-s="qr">QR</button><button data-s="nfc">NFC</button></div></div>
+    <p class="muted" id="scount"></p>
+    <div id="survey"></div>
+    <h3>자유 의견</h3>
+    <ul class="info" id="memos"></ul>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="qrcode.js"></script>
+<script src="app.js"></script>
+<script src="glass.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id), esc = App.esc;
+  let RAW = { visits: [], surveys: [], tags: [] }, segSrc = "";
+  const dayOf = t => { const d = new Date(t); if (isNaN(d)) return ""; const p = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
+  const uniq = arr => new Set(arr.map(x => x.vid)).size;
+  const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+  function quizRate(rows) { // "2/3" 형식 → 전체 정답률(%)
+    let r = 0, t = 0;
+    rows.forEach(x => { const m = String(x.quiz || "").match(/^(\d+)\/(\d+)$/); if (m) { r += +m[1]; t += +m[2]; } });
+    return t ? pct(r, t) : null;
+  }
+
+  $("badges").innerHTML = App.DEMO ? '<span class="badge demo">데모 모드 (이 기기 기록만)</span>' : '<span class="badge">실시간 기록</span>';
+  if (App.DEMO) $("demoBtns").style.display = "";
+
+  async function load() {
+    $("note").textContent = "불러오는 중…";
+    try { RAW = await App.getAll(); } catch (e) { $("note").textContent = "기록을 불러오지 못했어요. API_URL 을 확인하세요."; return; }
+    RAW.visits = RAW.visits || []; RAW.surveys = RAW.surveys || [];
+    const tags = Array.from(new Set(RAW.visits.map(v => v.tag))).sort();
+    const cur = $("tagSel").value;
+    $("tagSel").innerHTML = '<option value="">전체 태그</option>' + tags.map(t => '<option value="' + esc(t) + '">' + esc(tagLabel(t)) + "</option>").join("");
+    $("tagSel").value = cur;
+    render();
+  }
+  function tagLabel(t) {
+    if (CONTENT[t]) return CONTENT[t].icon + " " + CONTENT[t].name;
+    const f = (RAW.tags || []).find(x => String(x.id) === t);
+    return f ? f.name + " (" + t + ")" : t === "home" ? "첫 화면" : t;
+  }
+  function filt(arr) {
+    const f = $("from").value, to = $("to").value, tg = $("tagSel").value;
+    return arr.filter(r => r.src !== "test" && (!f || dayOf(r.time) >= f) && (!to || dayOf(r.time) <= to) && (!tg || r.tag === tg));
+  }
+
+  function render() {
+    const V = filt(RAW.visits), S = filt(RAW.surveys);
+    const test = RAW.visits.filter(r => r.src === "test").length;
+    $("note").textContent = "전체 기록 " + RAW.visits.length + "건 · 미리보기·테스트 " + test + "건 제외 · 직접 접속 " + V.filter(x => x.src === "direct").length + "건은 비교에서 빠져요";
+    const st = {};
+    ["qr", "nfc", "direct"].forEach(s => {
+      const v = V.filter(x => x.src === s), sv = S.filter(x => x.src === s);
+      const days = new Set(v.map(x => dayOf(x.time))).size;
+      st[s] = { total: v.length, uniq: uniq(v), surveys: sv.length, days, perDay: days ? Math.round(uniq(v) / days * 10) / 10 : 0, quiz: quizRate(sv) };
+    });
+    $("kpis").innerHTML = ["qr", "nfc"].map(s => {
+      const x = st[s];
+      return '<div class="kpi ' + s + '"><div class="t">' + (s === "qr" ? "QR 포스터" : "NFC 포스터") + '</div><div class="n">' + x.uniq + '명</div>' +
+        '<div class="d">고유 방문자 · 총 접속 ' + x.total + "회<br>기록된 날 " + x.days + "일 · 하루 평균 " + x.perDay + "명<br>설문 응답 " + x.surveys + "명 (참여율 " + pct(x.surveys, x.uniq) + "%)<br>OX 퀴즈 정답률 " + (x.quiz == null ? "-" : x.quiz + "%") + "</div></div>";
+    }).join("");
+    const a = st.qr.uniq, b = st.nfc.uniq, tot = a + b;
+    $("vs").innerHTML = tot ? '<div style="background:var(--qr);width:' + pct(a, tot) + '%">QR ' + pct(a, tot) + '%</div><div style="background:var(--nfc);width:' + pct(b, tot) + '%">NFC ' + pct(b, tot) + "%</div>"
+      : '<div style="background:#ccd6d2;width:100%">아직 기록이 없어요</div>';
+    let sum;
+    if (!tot) sum = "아직 비교할 기록이 없어요. 포스터를 붙인 뒤 다시 확인하세요.";
+    else {
+      const more = a === b ? null : a > b ? "QR" : "NFC", ratio = Math.min(a, b) ? Math.round(Math.max(a, b) / Math.min(a, b) * 10) / 10 : null;
+      sum = "QR 포스터 기간에는 <b>" + a + "명</b>(하루 평균 " + st.qr.perDay + "명), NFC 포스터 기간에는 <b>" + b + "명</b>(하루 평균 " + st.nfc.perDay + "명)이 안내 페이지에 들어왔어요. " +
+        (more ? "<b>" + more + "</b> 쪽이 " + (ratio ? "약 <b>" + ratio + "배</b> " : "") + "더 많이 이용됐어요." : "두 방식의 이용자 수가 같았어요.") +
+        " 설문 참여율은 QR " + pct(st.qr.surveys, a) + "%, NFC " + pct(st.nfc.surveys, b) + "% 였어요." +
+        (tot < 20 ? " <span class=\"muted\">(아직 표본이 적어 결론을 내기에는 일러요.)</span>" : "");
+    }
+    $("summary").innerHTML = sum;
+
+    // 날짜별 막대 (SVG)
+    const days = Array.from(new Set(V.map(x => dayOf(x.time)))).filter(Boolean).sort();
+    if (!days.length) $("daily").innerHTML = '<p class="muted">기록 없음</p>';
+    else {
+      const rows = days.map(d => { const o = { d }; ["qr", "nfc", "direct"].forEach(s => o[s] = uniq(V.filter(x => x.src === s && dayOf(x.time) === d))); return o; });
+      const max = Math.max(1, ...rows.map(r => Math.max(r.qr, r.nfc, r.direct)));
+      const gw = 66, H = 180, W = Math.max(600, rows.length * gw + 40), col = { qr: "#f08a24", nfc: "#2b7bd6", direct: "#9aa9a4" };
+      let svg = '<svg viewBox="0 0 ' + W + " " + (H + 50) + '" width="' + W + '" height="' + (H + 50) + '" font-size="11" font-family="sans-serif">';
+      svg += '<line x1="30" y1="' + (H + 10) + '" x2="' + W + '" y2="' + (H + 10) + '" stroke="#ccc"/>';
+      rows.forEach((r, i) => {
+        const x0 = 40 + i * gw;
+        ["qr", "nfc", "direct"].forEach((s, j) => {
+          const h = r[s] / max * H, x = x0 + j * 17, y = H + 10 - h;
+          if (r[s]) svg += '<rect x="' + x + '" y="' + y + '" width="15" height="' + h + '" rx="3" fill="' + col[s] + '"/><text x="' + (x + 7.5) + '" y="' + (y - 3) + '" text-anchor="middle" fill="#333">' + r[s] + "</text>";
+        });
+        const dt = new Date(r.d + "T00:00:00"), wd = "일월화수목금토"[dt.getDay()];
+        svg += '<text x="' + (x0 + 24) + '" y="' + (H + 26) + '" text-anchor="middle" fill="#555">' + r.d.slice(5).replace("-", "/") + "</text>";
+        svg += '<text x="' + (x0 + 24) + '" y="' + (H + 40) + '" text-anchor="middle" fill="#999">(' + wd + ")</text>";
+      });
+      $("daily").innerHTML = svg + "</svg>";
+    }
+
+    // 태그별 / 기기별
+    const tg = Array.from(new Set(V.map(x => x.tag))).sort();
+    $("byTag").innerHTML = "<tr><th>태그</th><th>QR</th><th>NFC</th><th>직접</th></tr>" + (tg.map(t => "<tr><td>" + esc(tagLabel(t)) + "</td>" +
+      ["qr", "nfc", "direct"].map(s => "<td>" + uniq(V.filter(x => x.tag === t && x.src === s)) + "</td>").join("") + "</tr>").join("") || '<tr><td colspan="4" class="muted">기록 없음</td></tr>');
+    const dv = ["iOS", "Android", "PC/기타"];
+    $("byDev").innerHTML = "<tr><th>기기</th><th>QR</th><th>NFC</th></tr>" + dv.map(d => "<tr><td>" + d + "</td>" +
+      ["qr", "nfc"].map(s => "<td>" + uniq(V.filter(x => x.device === d && x.src === s)) + "</td>").join("") + "</tr>").join("");
+
+    // 설문
+    const SS = segSrc ? S.filter(x => x.src === segSrc) : S;
+    const qr = quizRate(SS);
+    $("scount").textContent = "응답 " + SS.length + "명" + (segSrc ? " (" + SRC_LABEL[segSrc] + "로 접속한 사람)" : "") + (qr == null ? "" : " · OX 퀴즈 평균 정답률 " + qr + "%");
+    $("survey").innerHTML = SURVEY.filter(q => !q.text).map((q, i) => {
+      const n = SS.length;
+      return '<h3>' + (i + 1) + ". " + esc(q.q) + "</h3>" + q.opts.map(o => {
+        const c = SS.filter(x => x[q.key] === o).length;
+        return '<div class="qrow"><span>' + esc(o) + '</span><div class="track"><div class="bar" style="width:' + pct(c, n) + '%;background:' + (segSrc === "qr" ? "var(--qr)" : segSrc === "nfc" ? "var(--nfc)" : "var(--main)") + '"></div></div><span>' + c + "명 " + Math.round(pct(c, n)) + "%</span></div>";
+      }).join("");
+    }).join("");
+    const memos = SS.filter(x => x.memo && String(x.memo).trim());
+    $("memos").innerHTML = memos.length ? memos.map(x => "<li>" + esc(x.memo) + ' <span class="muted">(' + (SRC_LABEL[x.src] || x.src) + ")</span></li>").join("") : '<li class="muted">없음</li>';
+  }
+
+  $("seg").onclick = e => { const b = e.target.closest("button"); if (!b) return; segSrc = b.dataset.s; [...$("seg").children].forEach(x => x.classList.toggle("on", x === b)); render(); };
+  ["from", "to", "tagSel"].forEach(id => $(id).onchange = render);
+  $("reload").onclick = load;
+
+  function csv(rows, cols, name) {
+    const lines = [cols.join(",")].concat(rows.map(r => cols.map(c => '"' + String(r[c] == null ? "" : c === "time" ? new Date(r[c]).toLocaleString("ko-KR") : r[c]).replace(/"/g, '""') + '"').join(",")));
+    const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  }
+  $("csvV").onclick = () => csv(filt(RAW.visits), ["time", "tag", "src", "vid", "device"], "접속기록.csv");
+  $("csvS").onclick = () => csv(filt(RAW.surveys), ["time", "tag", "src", "vid"].concat(SURVEY.map(q => q.key), ["quiz"]), "설문결과.csv");
+
+  // ---- 데모: 예시 데이터 ----
+  $("fill").onclick = () => {
+    const visits = App.local.get("visits"), surveys = App.local.get("surveys");
+    const tags = Object.keys(CONTENT), devs = ["iOS", "iOS", "Android", "Android", "Android"];
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    const plan = [["qr", "2026-11-02", 5, [9, 18]], ["nfc", "2026-11-09", 5, [5, 13]]];
+    plan.forEach(([src, start, n, [lo, hi]]) => {
+      for (let d = 0; d < n; d++) {
+        const day = new Date(start + "T00:00:00"); day.setDate(day.getDate() + d);
+        const cnt = lo + Math.floor(Math.random() * (hi - lo + 1));
+        for (let k = 0; k < cnt; k++) {
+          const t = new Date(day); t.setHours(8 + Math.floor(Math.random() * 9), Math.floor(Math.random() * 60));
+          const vid = "demo" + App.uid(), tag = pick(tags), time = t.toISOString();
+          visits.push({ time, tag, src, vid, device: pick(devs) });
+          if (Math.random() < 0.3) visits.push({ time, tag: pick(tags), src, vid, device: "iOS" });
+          if (Math.random() < (src === "qr" ? 0.35 : 0.45)) {
+            const ans = { time, tag, src, vid };
+            SURVEY.forEach(q => { ans[q.key] = q.text ? "" : pick(q.opts); });
+            ans.quiz = pick(["3/3", "3/3", "2/3", "2/3", "1/3", ""]);
+            ans.q5 = src === "nfc" ? pick(["오늘 처음", "오늘 처음", "있다", "없다"]) : pick(["없다", "없다", "있다"]);
+            surveys.push(ans);
+          }
+        }
+      }
+    });
+    App.local.set("visits", visits); App.local.set("surveys", surveys);
+    load(); toast("예시 데이터를 만들었어요");
+  };
+  $("clear").onclick = () => { if (confirm("이 기기의 데모 기록을 모두 지울까요?")) { App.local.set("visits", []); App.local.set("surveys", []); load(); } };
+
+  function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 2200); }
+  load();
+})();
+</script>
+</body>
+</html>
